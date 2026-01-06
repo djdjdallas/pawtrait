@@ -4,6 +4,8 @@ import { UploadStage } from './components/UploadStage';
 import { StyleStage } from './components/StyleStage';
 import { ProcessingStage } from './components/ProcessingStage';
 import { ResultStage } from './components/ResultStage';
+import { GalleryPage } from './components/GalleryPage';
+import { PricingPage } from './components/PricingPage';
 import { AppStage, PetImage, PortraitStyle, GeneratedResult } from './types';
 import { generatePetPortrait, generatePetTraits } from './services/geminiService';
 
@@ -13,6 +15,12 @@ const App: React.FC = () => {
   const [selectedStyle, setSelectedStyle] = useState<PortraitStyle | null>(null);
   const [result, setResult] = useState<GeneratedResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const handleNavigate = (newStage: AppStage) => {
+    // If navigating away from creation flow, we don't necessarily clear state,
+    // but we change the view. 
+    setStage(newStage);
+  };
 
   const handleImageSelected = (base64: string, file: File) => {
     setPetImage({
@@ -66,7 +74,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <Layout onNavigate={handleNavigate} currentStage={stage}>
       {error && (
         <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-red-50 text-red-900 border border-red-200 px-6 py-4 shadow-lg animate-in slide-in-from-top-4">
           <p className="font-serif italic">{error}</p>
@@ -87,6 +95,13 @@ const App: React.FC = () => {
           previewImage={petImage.base64}
         />
       )}
+      
+      {/* If user navigates to style but no image is present (e.g. direct nav click), redirect to upload implicitly or show empty state. 
+          Here we just show upload if they try to access style without image via nav, 
+          but usually nav only has 'create' which maps to 'upload'. */}
+      {stage === 'style' && !petImage && (
+         <UploadStage onImageSelected={handleImageSelected} />
+      )}
 
       {stage === 'processing' && (
         <ProcessingStage />
@@ -98,6 +113,14 @@ const App: React.FC = () => {
           style={selectedStyle}
           onReset={handleReset}
         />
+      )}
+
+      {stage === 'gallery' && (
+        <GalleryPage onCtaClick={() => setStage('upload')} />
+      )}
+
+      {stage === 'pricing' && (
+        <PricingPage onCtaClick={() => setStage('upload')} />
       )}
     </Layout>
   );

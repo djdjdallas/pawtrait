@@ -1,0 +1,7 @@
+{
+  "name": "Pawtrait Atelier",
+  "description": "A creative, artsy AI pet portrait studio that transforms your pet photos into museum-quality masterpieces.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

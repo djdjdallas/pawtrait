@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { UploadStage } from './components/UploadStage';
 import { StyleStage } from './components/StyleStage';
@@ -9,6 +9,12 @@ import { PricingPage } from './components/PricingPage';
 import { AppStage, PetImage, PortraitStyle, GeneratedResult } from './types';
 import { generatePetPortrait, generatePetTraits } from './services/geminiService';
 import { RegionProvider } from './contexts/RegionContext';
+import { captureUTMParams } from './utils/utm';
+
+// Import Landing Pages
+import LandingPageUK from './pages/lp/uk';
+import LandingPageAU from './pages/lp/au';
+import LandingPageCA from './pages/lp/ca';
 
 const AppContent: React.FC = () => {
   const [stage, setStage] = useState<AppStage>('upload');
@@ -16,6 +22,15 @@ const AppContent: React.FC = () => {
   const [selectedStyle, setSelectedStyle] = useState<PortraitStyle | null>(null);
   const [result, setResult] = useState<GeneratedResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if coming from LP
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('from') === 'lp') {
+        // We could show a welcome message here or analytics event
+        captureUTMParams(); // Ensure params are captured if direct link from LP to app
+    }
+  }, []);
 
   const handleNavigate = (newStage: AppStage) => {
     setStage(newStage);
@@ -122,6 +137,15 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Simple routing logic for Landing Pages
+  // In a real production app with SSR, this would be handled by the server
+  // Here we use client-side path detection
+  const path = window.location.pathname;
+
+  if (path === '/lp/uk' || path === '/lp/uk/') return <LandingPageUK />;
+  if (path === '/lp/au' || path === '/lp/au/') return <LandingPageAU />;
+  if (path === '/lp/ca' || path === '/lp/ca/') return <LandingPageCA />;
+
   return (
     <RegionProvider>
       <AppContent />

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { GeneratedResult, PortraitStyle, ProductType, CanvasSize } from '../types';
-import { Download, RefreshCw, ShoppingBag, Check, ChevronRight } from 'lucide-react';
+import { Download, RefreshCw, ShoppingBag, Check, ChevronRight, Star } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { getPrice, getProductLabel, getDeliveryEstimate } from '../services/orderService';
 import { createCheckoutSession } from '../services/stripeService';
+import { useRegion } from '../contexts/RegionContext';
 
 interface ResultStageProps {
   result: GeneratedResult;
@@ -11,9 +11,58 @@ interface ResultStageProps {
   onReset: () => void;
 }
 
+interface ProductOption {
+    id: string;
+    type: ProductType;
+    size?: CanvasSize;
+    name: string;
+    description: string;
+    price: number;
+    isPopular?: boolean;
+}
+
 export const ResultStage: React.FC<ResultStageProps> = ({ result, style, onReset }) => {
-  const [productType, setProductType] = useState<ProductType>('canvas'); // Default to canvas for upsell
-  const [size, setSize] = useState<CanvasSize>('18x24');
+  const { region, pricing, formatPrice, copy, config } = useRegion();
+  
+  // Define available products based on current region pricing
+  const products: ProductOption[] = [
+    { 
+        id: 'digital', 
+        type: 'digital', 
+        name: 'Digital Download', 
+        description: 'High-resolution file sent via email', 
+        price: pricing.digital 
+    },
+    { 
+        id: 'canvas-12x16', 
+        type: 'canvas', 
+        size: '12x16', 
+        name: '12 x 16" Canvas', 
+        description: 'Gallery wrapped, ready to hang', 
+        price: pricing.canvas_12x16 
+    },
+    { 
+        id: 'canvas-18x24', 
+        type: 'canvas', 
+        size: '18x24', 
+        name: '18 x 24" Canvas', 
+        description: 'Perfect for living rooms', 
+        price: pricing.canvas_18x24,
+        isPopular: true
+    },
+    { 
+        id: 'canvas-24x36', 
+        type: 'canvas', 
+        size: '24x36', 
+        name: '24 x 36" Canvas', 
+        description: 'Statement piece for large walls', 
+        price: pricing.canvas_24x36 
+    }
+  ];
+
+  // Default to the popular option (18x24 canvas)
+  const [selectedProduct, setSelectedProduct] = useState<ProductOption>(products[2]);
+  
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
 
@@ -25,17 +74,15 @@ export const ResultStage: React.FC<ResultStageProps> = ({ result, style, onReset
     }
   }, []);
 
-  const price = getPrice(productType, size);
-
   const handleCheckout = async () => {
     setIsCheckingOut(true);
     try {
       await createCheckoutSession({
-        productType,
-        size: productType === 'canvas' ? size : undefined,
+        productType: selectedProduct.type,
+        size: selectedProduct.size,
         imageUrl: result.imageUrl,
         style,
-        price
+        price: selectedProduct.price
       });
     } catch (error) {
       console.error("Checkout failed", error);
@@ -62,7 +109,7 @@ export const ResultStage: React.FC<ResultStageProps> = ({ result, style, onReset
         <h2 className="text-4xl font-serif mb-4">A Masterpiece Awaits</h2>
         <p className="text-neutral-500 font-sans max-w-md mx-auto leading-relaxed mb-8">
           Thank you for your patronage. Your order has been confirmed. 
-          {productType === 'digital' 
+          {selectedProduct.type === 'digital' 
             ? " Your high-resolution file is ready for download." 
             : " Our artisans have begun crafting your canvas. You will receive tracking information shortly."}
         </p>
@@ -114,90 +161,84 @@ export const ResultStage: React.FC<ResultStageProps> = ({ result, style, onReset
                 <p className="text-xs font-sans text-neutral-400 uppercase tracking-widest mt-2">Configure your edition</p>
             </div>
 
-            {/* Product Type Selection */}
-            <div className="space-y-4">
-                <span className="text-xs uppercase tracking-widest font-bold text-neutral-800">1. Select Medium</span>
-                <div className="grid grid-cols-2 gap-4">
+            {/* Product List Selector */}
+            <div className="space-y-3">
+                {products.map((product) => (
                     <div 
-                        onClick={() => setProductType('digital')}
-                        className={`p-4 border cursor-pointer transition-all ${productType === 'digital' ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200 hover:border-neutral-400'}`}
+                        key={product.id}
+                        onClick={() => setSelectedProduct(product)}
+                        className={`
+                            relative flex justify-between items-center p-4 border cursor-pointer transition-all duration-200 group
+                            ${selectedProduct.id === product.id 
+                                ? 'border-neutral-900 bg-neutral-900 text-white shadow-lg' 
+                                : 'border-neutral-200 bg-white hover:border-neutral-400 hover:shadow-sm text-neutral-800'
+                            }
+                        `}
                     >
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="text-sm font-medium">Digital Download</span>
-                            <span className="font-serif italic">$29</span>
-                        </div>
-                        <p className="text-xs text-neutral-500 leading-relaxed">High-resolution file suitable for printing up to 24x36". Instant delivery.</p>
-                    </div>
+                        {product.isPopular && (
+                            <div className={`
+                                absolute top-0 right-0 transform -translate-y-1/2 translate-x-2 
+                                px-2 py-0.5 text-[9px] uppercase font-bold tracking-wider shadow-sm
+                                ${selectedProduct.id === product.id ? 'bg-white text-black' : 'bg-neutral-900 text-white'}
+                            `}>
+                                Popular
+                            </div>
+                        )}
 
-                    <div 
-                        onClick={() => setProductType('canvas')}
-                        className={`p-4 border cursor-pointer transition-all relative overflow-hidden ${productType === 'canvas' ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 hover:border-neutral-400'}`}
-                    >
-                        <div className="absolute top-0 right-0 p-1 bg-white text-black text-[9px] uppercase font-bold px-2">Best Value</div>
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="text-sm font-medium">Museum Canvas</span>
-                            <span className="font-serif italic text-neutral-300">from $79</span>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-serif text-lg">{product.name}</h3>
+                                {product.isPopular && <Star className="w-3 h-3 fill-current opacity-70" />}
+                            </div>
+                            <p className={`text-xs ${selectedProduct.id === product.id ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                                {product.description}
+                            </p>
                         </div>
-                        <p className={`text-xs leading-relaxed ${productType === 'canvas' ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                            Hand-stretched over solid wood frames. Archival quality inks. Ready to hang.
-                        </p>
+                        <div className="font-serif text-xl">
+                            {formatPrice(product.price)}
+                        </div>
                     </div>
-                </div>
+                ))}
             </div>
 
-            {/* Size Selection (Only if Canvas) */}
-            <div className={`space-y-4 transition-all duration-500 overflow-hidden ${productType === 'canvas' ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}>
-                <span className="text-xs uppercase tracking-widest font-bold text-neutral-800">2. Select Dimensions</span>
-                <div className="flex gap-3">
-                    {(['12x16', '18x24', '24x36'] as CanvasSize[]).map((s) => (
-                        <button
-                            key={s}
-                            onClick={() => setSize(s)}
-                            className={`flex-1 py-3 border text-xs uppercase tracking-widest transition-all ${size === s ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 hover:border-neutral-400'}`}
-                        >
-                            {s}"
-                        </button>
-                    ))}
+            {/* Shipping Info */}
+            <div className="bg-[#FDFBF7] p-4 border border-dashed border-neutral-300 text-center">
+                <p className="text-xs text-neutral-600 mb-1 font-bold uppercase tracking-wider">{copy.shippingLabel} to {config.name}</p>
+                <p className="text-xs text-neutral-500">{copy.arrivalText}</p>
+            </div>
+
+            {/* Checkout Area */}
+            <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                     <div>
+                        <p className="text-[10px] uppercase tracking-widest text-neutral-400">Total</p>
+                     </div>
+                     <div className="text-4xl font-serif text-[#2C2C2C]">
+                        {formatPrice(selectedProduct.price)}
+                     </div>
                 </div>
-                <p className="text-[10px] text-neutral-400 uppercase tracking-widest text-right">
-                    Depth: 1.25" • Hardware Included
+
+                <button 
+                    onClick={handleCheckout}
+                    disabled={isCheckingOut}
+                    className="w-full bg-[#2C2C2C] text-white py-4 flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl disabled:opacity-70 disabled:cursor-wait group"
+                >
+                    {isCheckingOut ? (
+                        <span className="animate-pulse">Processing...</span>
+                    ) : (
+                        <>
+                            <ShoppingBag className="w-4 h-4" />
+                            <span className="text-xs uppercase tracking-widest">Secure Checkout</span>
+                            <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity -ml-2" />
+                        </>
+                    )}
+                </button>
+                <p className="text-[10px] text-neutral-400 text-center">
+                    Secure Payment via Stripe • 100% Satisfaction Guarantee
                 </p>
             </div>
 
-            {/* Summary & Checkout */}
-            <div className="bg-[#FDFBF7] p-6 border border-neutral-200 space-y-4">
-                <div className="flex justify-between items-end border-b border-neutral-200 pb-4">
-                    <div>
-                        <h3 className="font-serif text-lg">{getProductLabel(productType, size)}</h3>
-                        <p className="text-xs text-neutral-500 mt-1">{getDeliveryEstimate(productType)}</p>
-                    </div>
-                    <div className="text-3xl font-serif">
-                        ${price}
-                    </div>
-                </div>
-
-                <div className="pt-2">
-                    <button 
-                        onClick={handleCheckout}
-                        disabled={isCheckingOut}
-                        className="w-full bg-[#2C2C2C] text-white py-4 flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl disabled:opacity-70 disabled:cursor-wait"
-                    >
-                        {isCheckingOut ? (
-                            <span className="animate-pulse">Processing...</span>
-                        ) : (
-                            <>
-                                <ShoppingBag className="w-4 h-4" />
-                                <span className="text-xs uppercase tracking-widest">Proceed to Checkout</span>
-                            </>
-                        )}
-                    </button>
-                    <p className="text-[10px] text-neutral-400 text-center mt-3">
-                        Secure Payment via Stripe • 100% Satisfaction Guarantee
-                    </p>
-                </div>
-            </div>
-
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between pt-4 border-t border-neutral-100">
                  <button onClick={downloadPreview} className="flex items-center gap-2 text-xs uppercase tracking-widest text-neutral-500 hover:text-neutral-900 transition-colors">
                     <Download className="w-3 h-3" /> Download Watermarked Preview
                  </button>

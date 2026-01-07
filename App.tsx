@@ -8,8 +8,9 @@ import { GalleryPage } from './components/GalleryPage';
 import { PricingPage } from './components/PricingPage';
 import { AppStage, PetImage, PortraitStyle, GeneratedResult } from './types';
 import { generatePetPortrait, generatePetTraits } from './services/geminiService';
+import { RegionProvider } from './contexts/RegionContext';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [stage, setStage] = useState<AppStage>('upload');
   const [petImage, setPetImage] = useState<PetImage | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<PortraitStyle | null>(null);
@@ -17,8 +18,6 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleNavigate = (newStage: AppStage) => {
-    // If navigating away from creation flow, we don't necessarily clear state,
-    // but we change the view. 
     setStage(newStage);
   };
 
@@ -47,7 +46,6 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      // Parallel execution for image generation and trait analysis
       const [imageUrl, traits] = await Promise.all([
         generatePetPortrait(petImage.base64, selectedStyle),
         generatePetTraits(petImage.base64)
@@ -96,9 +94,6 @@ const App: React.FC = () => {
         />
       )}
       
-      {/* If user navigates to style but no image is present (e.g. direct nav click), redirect to upload implicitly or show empty state. 
-          Here we just show upload if they try to access style without image via nav, 
-          but usually nav only has 'create' which maps to 'upload'. */}
       {stage === 'style' && !petImage && (
          <UploadStage onImageSelected={handleImageSelected} />
       )}
@@ -123,6 +118,14 @@ const App: React.FC = () => {
         <PricingPage onCtaClick={() => setStage('upload')} />
       )}
     </Layout>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <RegionProvider>
+      <AppContent />
+    </RegionProvider>
   );
 };
 

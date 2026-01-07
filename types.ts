@@ -35,3 +35,29 @@ export interface ProductSelection {
   size?: CanvasSize;
   price: number;
 }
+
+// Region & Localization Types
+export type Region = 'US' | 'UK' | 'AU' | 'CA' | 'OTHER';
+
+export interface RegionConfig {
+  code: Region;
+  currency: string;
+  currencySymbol: string;
+  locale: string;
+  flagEmoji: string;
+  name: string;
+}
+
+export interface PricingTier {
+  digital: number;
+  canvas_12x16: number;
+  canvas_18x24: number;
+  canvas_24x36: number;
+}
+
+export interface LocalizedCopy {
+  shippingLabel: string;
+  arrivalText: string;
+  colorSpelling: string;
+  favoriteSpelling: string;
+}
